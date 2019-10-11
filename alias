@@ -134,3 +134,30 @@ revoke-my-ip-all =
   !f() {
     aws revoke-my-ip ${1} all all
   }; f
+
+
+#
+# List instances on all AZ-regions
+#
+list-instances =
+  !f() {
+    echo "Filtering by \`$1\`"
+    for region in $(aws ec2 describe-regions --query "Regions[*].RegionName" --output text | tr "\t" "\n" | grep "$1")
+      do
+        echo "\nListing Instances in region:'$region'..."
+        aws ec2 describe-instances --region $region \
+          --output table \
+          --query "Reservations[*].Instances[*].{
+                    Instance:InstanceId,
+                    Type:InstanceType,
+                    AZ:Placement.AvailabilityZone,
+                    KeyName:KeyName,
+                    Name:Tags[?Key==\`Name\`]|[0].Value,
+                    Project:Tags[?Key==\`project\`]|[0].Value,
+                    IP:PublicIpAddress,
+                    State:State.Name,
+                    CPUcores:CpuOptions.CoreCount,
+                    CPUThreads:CpuOptions.ThreadsPerCore
+                }"
+      done
+  }; f
